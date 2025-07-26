@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>ASCII Blackjack</title>
+  <title>Blackjack Web</title>
   <link rel="stylesheet" href="style.css"/>
   <link rel="preload" href="https://i.imgur.com/5bQ7z0F.png" as="image">
 </head>
@@ -11,11 +11,11 @@
   <div id="bankroll">Chips: <span id="chips">10000</span></div>
 
   <div id="game">
-    <div id="bet-area">
-      <label>Bet: <input id="betInput" type="number" min="1" step="1"/></label>
-      <button id="dealBtn">Deal</button>
-    </div>
-
+<div id="bet-area">
+  <label>Stake: <input id="betInput" type="number" min="1" step="1" value="1000"></label>
+  <span id="pressEnter" style="margin-left:1rem; color:#ccc;">Press <kbd>Enter</kbd> to start</span>
+</div>
+    
     <div id="hands"></div>
     <div id="controls"></div>
 
