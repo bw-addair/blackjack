@@ -176,75 +176,73 @@ function promptPlayer(message, opts) {
   });
 }
 
-async function playRound() {
-  clearTable();
+async function playHand(hand, bet, idx, totalHands) {
+  // container for this hand
+  const div = document.createElement('div');
+  div.className = 'hand';
+  const title = totalHands > 1 ? `Hand ${idx + 1}` : 'Player';
 
-  const betInput = $('betInput');
-  const bet = parseInt(betInput.value, 10);
-  if (!bet || bet <= 0 || bet > chips) {
-    log('Invalid bet.');
-    return;
+  // title line
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'hand-title';
+  titleDiv.textContent = title;
+  div.appendChild(titleDiv);
+
+  // card row
+  const cardRow = renderHand(hand);
+  div.appendChild(cardRow);
+  $('hands').appendChild(div);
+
+  // helper to refresh the card row after changes
+  const refresh = () => cardRow.replaceWith(renderHand(hand));
+
+  // blackjack check
+  if (value(hand) === 21 && hand.length === 2) {
+    log(`${title}: BLACKJACK!`);
+    return Math.floor(1.5 * bet);
   }
-  betInput.value = '';
 
-  let playerHand = [draw(), draw()];
-  const dealerHand = [draw(), draw()];
-
-  // offer split
-  let hands = [playerHand];
-  let bets = [bet];
-  if (playerHand[0] === playerHand[1] && chips >= bet) {
-    const split = await promptPlayer('Split identical cards? (y/n)', ['y','n']);
-    if (split === 'y') {
-      hands = [[playerHand[0], draw()], [playerHand[1], draw()]];
-      bets = [bet, bet];
+  // main loop
+  while (true) {
+    const v = value(hand);
+    if (v > 21) {
+      log(`${title}: BUST`);
+      return -bet;
     }
-  }
+    if (v === 21) break;
 
-  // play each hand
-  const results = [];
-  for (let i = 0; i < hands.length; i++) {
-    const result = await playHand(hands[i], bets[i], i, hands.length);
-    if (typeof result === 'number') {
-      results.push(result);
-    } else { // object {hand, bet}
-      results.push(result);
+    const canDouble = hand.length === 2 && chips >= bet;
+    const opts = ['h', 's'];
+    let prompt = `${title}: Hit or stand`;
+    if (canDouble) {
+      opts.push('d');
+      prompt += ' (h/s/d)';
     }
-  }
-  const finalHands = results.map(r => (typeof r === 'number' ? null : r.hand));
-  const finalBets = results.map(r => (typeof r === 'number' ? bets[results.indexOf(r)] : r.bet));
+    const choice = await promptPlayer(prompt + '? ', opts);
 
-  // dealer turn
-  log('\nDealer: ' + renderHand(dealerHand, true));
-  while (handValue(dealerHand) < 17) {
-    dealerHand.push(draw());
-    log('Dealer hits: ' + renderHand(dealerHand));
-  }
-  log('Dealer final: ' + renderHand(dealerHand));
+    if (choice === 's') break;
 
-  // settle
-  const dVal = handValue(dealerHand);
-  let net = 0;
-  finalHands.forEach((hand, i) => {
-    if (!hand) return; // already handled blackjack/bust
-    const pVal = handValue(hand);
-    const b = finalBets[i];
-    let res;
-    if (pVal > 21) res = -b;
-    else if (dVal > 21 || pVal > dVal) res = b;
-    else if (pVal < dVal) res = -b;
-    else res = 0;
-    net += res;
-    log(`Hand ${i+1}: ${res > 0 ? '+' + res : res}`);
-  });
+    if (choice === 'd') {
+      bet *= 2;
+      hand.push(draw());
+      refresh();
+      log(`${title}: doubled → ${hand.join(' ')} (value ${value(hand)})`);
+      if (value(hand) > 21) {
+        log(`${title}: BUST`);
+        return -bet;
+      }
+      break;
+    }
 
-  chips += net;
-  $('chips').textContent = chips;
-  if (chips <= 0) {
-    log(red + 'You are broke! Reload next paycheck.' + reset);
-    $('dealBtn').disabled = true;
+    // hit
+    hand.push(draw());
+    refresh();
   }
+
+  // return object so caller can finish the hand
+  return { hand, bet };
 }
+
 
 // ---------- entry point ----------
 async function boot() {
