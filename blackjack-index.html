@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>ASCII Blackjack</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <h1>ASCII Blackjack</h1>
+  <div id="bankroll">Chips: <span id="chips">10000</span></div>
+
+  <div id="game">
+    <div id="bet-area">
+      <label>Bet: <input id="betInput" type="number" min="1" step="1"/></label>
+      <button id="dealBtn">Deal</button>
+    </div>
+
+    <div id="hands"></div>
+    <div id="controls"></div>
+
+    <pre id="log"></pre>
+  </div>
+
+  <script src="blackjack.js"></script>
+</body>
+</html>
