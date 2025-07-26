@@ -252,6 +252,6 @@ async function boot() {
     document.removeEventListener('keydown', onEnter);
     await playRound();
     if (chips > 0) boot(); // loop
-  }, { once: true });
+  });
 }
 boot();
