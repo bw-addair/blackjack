@@ -246,6 +246,14 @@ async function playRound() {
   }
 }
 
-// wire up
-$('dealBtn').addEventListener('click', playRound);
-shuffle();
+// ---------- entry point ----------
+async function boot() {
+  $('pressEnter').textContent = 'Press Enter to start round…';
+  document.addEventListener('keydown', async function onEnter(e) {
+    if (e.key !== 'Enter') return;
+    document.removeEventListener('keydown', onEnter);
+    await playRound();
+    if (chips > 0) boot(); // loop
+  }, { once: true });
+}
+boot();
