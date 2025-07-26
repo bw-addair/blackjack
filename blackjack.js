@@ -47,9 +47,26 @@ function handValue(hand) {
   return v;
 }
 
-function renderHand(hand, hideFirst=false) {
-  const cards = hideFirst ? ['XX', ...hand.slice(1)] : hand;
-  return cards.join(' ') + '  (Value ' + (hideFirst ? '?)' : handValue(hand) + ')');
+/* -------- card sprite sheet -------- */
+const suitOrder = { S:0, H:1, D:2, C:3 };
+const spriteMap = {
+  A:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, J:10, Q:11, K:12
+};
+
+function cardEl(card, faceDown = false) {
+  const div = document.createElement('div');
+  div.className = faceDown ? 'card back' : 'card ' + card;
+  div.title = faceDown ? '??' : card;
+  return div;
+}
+
+function renderHand(hand, hideFirst = false) {
+  const box = document.createElement('div');
+  box.style.display = 'flex';
+  box.style.gap = '4px';
+  box.style.margin = '4px 0';
+  hand.forEach((c, i) => box.appendChild(cardEl(c, hideFirst && i === 0)));
+  return box;
 }
 
 function clearTable() {
@@ -59,17 +76,62 @@ function clearTable() {
 }
 
 async function playHand(hand, bet, idx, totalHands) {
-  const title = totalHands > 1 ? `Hand ${idx+1}` : 'Player';
+  // Build the container for this hand
   const div = document.createElement('div');
   div.className = 'hand';
-  div.innerHTML = `<div class="hand-title">${title}</div>
-                   <div class="cards">${renderHand(hand)}</div>`;
+  const title = totalHands > 1 ? `Hand ${idx + 1}` : 'Player';
+
+  div.innerHTML = `<div class="hand-title">${title}</div>`;
+  const cardBox = renderHand(hand);
+  div.appendChild(cardBox);
   $('hands').appendChild(div);
 
-  if (handValue(hand) === 21 && hand.length === 2) {
+  // Helper to update the displayed cards
+  const update = () => cardBox.replaceWith(renderHand(hand));
+
+  // Blackjack?
+  if (value(hand) === 21 && hand.length === 2) {
     log(`${title}: BLACKJACK!`);
     return Math.floor(1.5 * bet);
   }
+
+  // Double-down allowed?
+  const canDouble = hand.length === 2 && chips >= bet;
+  let choice;
+  while (true) {
+    const opts = ['h', 's'];
+    let prompt = 'Hit or stand';
+    if (canDouble && hand.length === 2) {
+      opts.push('d');
+      prompt += ' (h/s/d)';
+    }
+    choice = await promptPlayer(`${title}: ${prompt}? `, opts);
+
+    if (choice === 's') break;
+
+    if (choice === 'd') {
+      bet *= 2;
+      hand.push(draw());
+      update();
+      log(`${title}: doubled → ${hand.join(' ')} (value ${value(hand)})`);
+      break;
+    }
+
+    // Hit
+    hand.push(draw());
+    update();
+    if (value(hand) >= 21) break;
+  }
+
+  const finalVal = value(hand);
+  if (finalVal > 21) {
+    log(`${title}: BUST!`);
+    return -bet;
+  }
+
+  // Return the hand object so caller can finish it off
+  return { hand, bet };
+}
 
   while (true) {
     const val = handValue(hand);
