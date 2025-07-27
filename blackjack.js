@@ -55,12 +55,24 @@ function cardEl(card, faceDown = false) {
   return div;
 }
 
+function suitSymbol(suitChar) {
+  return { S: '♠', H: '♥', D: '♦', C: '♣' }[suitChar];
+}
+
+function cardText(card, faceDown = false) {
+  if (faceDown) return '[??]';
+  const rank = card.slice(0, -1);
+  const suit = suitSymbol(card.slice(-1));
+  return `[${rank}${suit}]`;
+}
+
 function renderHand(hand, hideFirst = false) {
   const box = document.createElement('div');
   box.className = 'cards';
-  hand.forEach((c, i) => box.appendChild(cardEl(c, hideFirst && i === 0)));
+  box.textContent = hand.map((c, i) => cardText(c, hideFirst && i === 0)).join(' ');
   return box;
 }
+
 
 function promptPlayer(message, opts) {
   return new Promise(res => {
