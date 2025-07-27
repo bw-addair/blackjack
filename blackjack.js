@@ -1,13 +1,8 @@
-/*  ASCII Blackjack – all logic in vanilla JS
-    Features: 6-deck shoe, double, split, 3:2 BJ, 10 000 chips start
-*/
-
 const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const cardValue = {
   A: 11, J: 10, Q: 10, K: 10,
   '2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10
 };
-
 let shoe = [];
 let chips = 10000;
 
@@ -20,7 +15,11 @@ const log = msg => {
 
 function shuffle() {
   shoe = [];
-  for (let i = 0; i < 6; i++) shoe.push(...ranks, ...ranks, ...ranks, ...ranks);
+  for (let i = 0; i < 6; i++) {
+    for (const rank of ranks) {
+      shoe.push(rank + 'S', rank + 'H', rank + 'D', rank + 'C');
+    }
+  }
   for (let i = shoe.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
@@ -30,7 +29,7 @@ function shuffle() {
 function draw() {
   if (shoe.length < 20) {
     shuffle();
-    log('Shuffling new shoe…\n');
+    log('Shuffling new shoe…');
   }
   return shoe.pop();
 }
@@ -38,20 +37,16 @@ function draw() {
 function handValue(hand) {
   let v = 0, aces = 0;
   for (const c of hand) {
-    v += cardValue[c];
-    if (c === 'A') aces++;
+    const rank = c.slice(0, -1);
+    v += cardValue[rank];
+    if (rank === 'A') aces++;
   }
   while (v > 21 && aces) {
-    v -= 10; aces--;
+    v -= 10;
+    aces--;
   }
   return v;
 }
-
-/* -------- card sprite sheet -------- */
-const suitOrder = { S:0, H:1, D:2, C:3 };
-const spriteMap = {
-  A:0, 2:1, 3:2, 4:3, 5:4, 6:5, 7:6, 8:7, 9:8, 10:9, J:10, Q:11, K:12
-};
 
 function cardEl(card, faceDown = false) {
   const div = document.createElement('div');
@@ -62,100 +57,9 @@ function cardEl(card, faceDown = false) {
 
 function renderHand(hand, hideFirst = false) {
   const box = document.createElement('div');
-  box.style.display = 'flex';
-  box.style.gap = '4px';
-  box.style.margin = '4px 0';
+  box.className = 'cards';
   hand.forEach((c, i) => box.appendChild(cardEl(c, hideFirst && i === 0)));
   return box;
-}
-
-function clearTable() {
-  $('hands').innerHTML = '';
-  $('controls').innerHTML = '';
-  $('log').textContent = '';
-}
-
-async function playHand(hand, bet, idx, totalHands) {
-  // Build the container for this hand
-  const div = document.createElement('div');
-  div.className = 'hand';
-  const title = totalHands > 1 ? `Hand ${idx + 1}` : 'Player';
-
-  div.innerHTML = `<div class="hand-title">${title}</div>`;
-  const cardBox = renderHand(hand);
-  div.appendChild(cardBox);
-  $('hands').appendChild(div);
-
-  // Helper to update the displayed cards
-  const update = () => cardBox.replaceWith(renderHand(hand));
-
-  // Blackjack?
-  if (value(hand) === 21 && hand.length === 2) {
-    log(`${title}: BLACKJACK!`);
-    return Math.floor(1.5 * bet);
-  }
-
-  // Double-down allowed?
-  const canDouble = hand.length === 2 && chips >= bet;
-  let choice;
-  while (true) {
-    const opts = ['h', 's'];
-    let prompt = 'Hit or stand';
-    if (canDouble && hand.length === 2) {
-      opts.push('d');
-      prompt += ' (h/s/d)';
-    }
-    choice = await promptPlayer(`${title}: ${prompt}? `, opts);
-
-    if (choice === 's') break;
-
-    if (choice === 'd') {
-      bet *= 2;
-      hand.push(draw());
-      update();
-      log(`${title}: doubled → ${hand.join(' ')} (value ${value(hand)})`);
-      break;
-    }
-
-    // Hit
-    hand.push(draw());
-    update();
-    if (value(hand) >= 21) break;
-  }
-
-  const finalVal = value(hand);
-  if (finalVal > 21) {
-    log(`${title}: BUST!`);
-    return -bet;
-  }
-
-  // Return the hand object so caller can finish it off
-  return { hand, bet };
-}
-
-  while (true) {
-    const val = handValue(hand);
-    if (val > 21) { log(`${title}: BUST`); return -bet; }
-    if (val === 21) break;
-
-    const canDouble = hand.length === 2 && chips >= bet;
-    const choice = await promptPlayer(
-      `Hit, stand${canDouble ? ', double' : ''}?`,
-      canDouble ? ['h','s','d'] : ['h','s']
-    );
-    if (choice === 's') break;
-    if (choice === 'd') {
-      bet *= 2;
-      hand.push(draw());
-      div.querySelector('.cards').textContent = renderHand(hand);
-      log(`${title}: doubled → ${renderHand(hand)}`);
-      if (handValue(hand) > 21) { log(`${title}: BUST`); return -bet; }
-      break;
-    }
-    hand.push(draw());
-    div.querySelector('.cards').textContent = renderHand(hand);
-  }
-  return { hand, bet };
 }
 
 function promptPlayer(message, opts) {
@@ -177,39 +81,38 @@ function promptPlayer(message, opts) {
 }
 
 async function playHand(hand, bet, idx, totalHands) {
-  // container for this hand
   const div = document.createElement('div');
   div.className = 'hand';
   const title = totalHands > 1 ? `Hand ${idx + 1}` : 'Player';
 
-  // title line
   const titleDiv = document.createElement('div');
   titleDiv.className = 'hand-title';
   titleDiv.textContent = title;
   div.appendChild(titleDiv);
 
-  // card row
   const cardRow = renderHand(hand);
   div.appendChild(cardRow);
   $('hands').appendChild(div);
 
-  // helper to refresh the card row after changes
-  const refresh = () => cardRow.replaceWith(renderHand(hand));
+  const refresh = () => {
+    const newRow = renderHand(hand);
+    cardRow.replaceWith(newRow);
+    cardRow.innerHTML = newRow.innerHTML;
+  };
 
-  // blackjack check
-  if (value(hand) === 21 && hand.length === 2) {
+  // blackjack
+  if (handValue(hand) === 21 && hand.length === 2) {
     log(`${title}: BLACKJACK!`);
     return Math.floor(1.5 * bet);
   }
 
-  // main loop
   while (true) {
-    const v = value(hand);
-    if (v > 21) {
+    const val = handValue(hand);
+    if (val > 21) {
       log(`${title}: BUST`);
       return -bet;
     }
-    if (v === 21) break;
+    if (val === 21) break;
 
     const canDouble = hand.length === 2 && chips >= bet;
     const opts = ['h', 's'];
@@ -218,7 +121,7 @@ async function playHand(hand, bet, idx, totalHands) {
       opts.push('d');
       prompt += ' (h/s/d)';
     }
-    const choice = await promptPlayer(prompt + '? ', opts);
+    const choice = await promptPlayer(prompt + '?', opts);
 
     if (choice === 's') break;
 
@@ -226,32 +129,87 @@ async function playHand(hand, bet, idx, totalHands) {
       bet *= 2;
       hand.push(draw());
       refresh();
-      log(`${title}: doubled → ${hand.join(' ')} (value ${value(hand)})`);
-      if (value(hand) > 21) {
+      log(`${title}: doubled → ${hand.join(' ')} (${handValue(hand)})`);
+      if (handValue(hand) > 21) {
         log(`${title}: BUST`);
         return -bet;
       }
       break;
     }
 
-    // hit
     hand.push(draw());
     refresh();
   }
 
-  // return object so caller can finish the hand
   return { hand, bet };
 }
 
+// simulate dealer logic
+function dealerPlay(dealerHand) {
+  while (handValue(dealerHand) < 17) {
+    dealerHand.push(draw());
+  }
+  return dealerHand;
+}
 
-// ---------- entry point ----------
-async function boot() {
+async function playRound() {
+  clearTable();
+
+  const bet = parseInt($('betInput').value);
+  if (isNaN(bet) || bet < 1 || bet > chips) {
+    log('Invalid bet amount.');
+    return;
+  }
+
+  let playerHand = [draw(), draw()];
+  let dealerHand = [draw(), draw()];
+  let result = await playHand(playerHand, bet, 0, 1);
+
+  const dealerDiv = document.createElement('div');
+  dealerDiv.className = 'hand';
+  dealerDiv.innerHTML = `<div class="hand-title">Dealer</div>`;
+  const dealerCards = renderHand(dealerHand, true);
+  dealerDiv.appendChild(dealerCards);
+  $('hands').appendChild(dealerDiv);
+
+  // reveal dealer's hand
+  await new Promise(r => setTimeout(r, 1000));
+  dealerCards.replaceWith(renderHand(dealerPlay(dealerHand)));
+
+  const dealerVal = handValue(dealerHand);
+  log(`Dealer: ${dealerHand.join(' ')} (${dealerVal})`);
+
+  let payout = 0;
+  if (typeof result === 'number') {
+    payout = result;
+  } else {
+    const playerVal = handValue(result.hand);
+    if (playerVal > 21) payout = -result.bet;
+    else if (dealerVal > 21 || playerVal > dealerVal) payout = result.bet;
+    else if (playerVal < dealerVal) payout = -result.bet;
+    else payout = 0; // push
+  }
+
+  chips += payout;
+  $('chips').textContent = chips;
+  log(payout >= 0 ? `You win ${payout} chips.` : `You lose ${-payout} chips.`);
+}
+
+function clearTable() {
+  $('hands').innerHTML = '';
+  $('controls').innerHTML = '';
+  $('log').textContent = '';
+}
+
+function boot() {
   $('pressEnter').textContent = 'Press Enter to start round…';
   document.addEventListener('keydown', async function onEnter(e) {
     if (e.key !== 'Enter') return;
     document.removeEventListener('keydown', onEnter);
     await playRound();
-    if (chips > 0) boot(); // loop
+    if (chips > 0) boot();
+    else log('Out of chips!');
   });
 }
+
 boot();
